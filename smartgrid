@@ -1,0 +1,100 @@
+using cAlgo.API;
+
+namespace cAlgo
+{
+    [Robot(TimeZone = TimeZones.UTC, AccessRights = AccessRights.None)]
+    public class SmartGridBot : Robot
+    {
+        [Parameter("Initial Volume", DefaultValue = 10000, MinValue = 1000, Step = 1000)]
+        public int InitialVolume { get; set; }
+
+        [Parameter("Take Profit (pips)", DefaultValue = 10, MinValue = 1)]
+        public int TakeProfitPips { get; set; }
+
+        [Parameter("Grid Size (pips)", DefaultValue = 20, MinValue = 1)]
+        public int GridSizePips { get; set; }
+
+        [Parameter("Max Orders", DefaultValue = 10, MinValue = 1)]
+        public int MaxOrders { get; set; }
+
+        [Parameter("Max Volume", DefaultValue = 100000, MinValue = 1000, Step = 1000)]
+        public int MaxVolume { get; set; }
+
+        private const string Label = "SmartGridBot";
+        private double _volume = 0;
+        private double _lastPrice = 0;
+        private int _currentDirection = 0;
+        private int _totalOrders = 0;
+
+        protected override void OnStart()
+        {
+            _volume = InitialVolume;
+            _lastPrice = Symbol.Bid;
+        }
+
+        protected override void OnBar()
+        {
+            if (_totalOrders >= MaxOrders)
+                return;
+
+            var currentPrice = Symbol.Bid;
+
+            if (_currentDirection == 0 && currentPrice <= _lastPrice - GridSizePips * Symbol.PipSize)
+            {
+                ExecuteTrade(TradeType.Buy);
+                _currentDirection = 1;
+                _lastPrice = currentPrice;
+            }
+            else if (_currentDirection == 1 && currentPrice >= _lastPrice + TakeProfitPips * Symbol.PipSize)
+            {
+                ClosePosition(TradeType.Buy);
+                _currentDirection = 0;
+                _lastPrice = currentPrice;
+            }
+            else if (_currentDirection == 1 && currentPrice <= _lastPrice - GridSizePips * Symbol.PipSize)
+            {
+                ExecuteTrade(TradeType.Buy);
+                _lastPrice = currentPrice;
+            }
+            else if (_currentDirection == 0 && currentPrice >= _lastPrice + GridSizePips * Symbol.PipSize)
+            {
+                ExecuteTrade(TradeType.Sell);
+                _currentDirection = -1;
+                _lastPrice = currentPrice;
+            }
+            else if (_currentDirection == -1 && currentPrice <= _lastPrice - TakeProfitPips * Symbol.PipSize)
+            {
+                ClosePosition(TradeType.Sell);
+                _currentDirection = 0;
+                _lastPrice = currentPrice;
+            }
+            else if (_currentDirection == -1 && currentPrice >= _lastPrice + GridSizePips * Symbol.PipSize)
+            {
+                ExecuteTrade(TradeType.Sell);
+                _lastPrice = currentPrice;
+            }
+        }
+
+        private void ExecuteTrade(TradeType tradeType)
+        {
+            if (_totalOrders >= MaxOrders || _volume > MaxVolume)
+                return;
+
+            var position = Positions.Find(Label, SymbolName, tradeType);
+
+            if (position == null)
+            {
+                ExecuteMarketOrder(tradeType, SymbolName, _volume, Label, null, null, null);
+                _totalOrders++;
+                _volume *= 2;
+            }
+        }
+
+        private void ClosePosition(TradeType tradeType)
+        {
+
+
+
+
+
+escreve aqui o código completo
